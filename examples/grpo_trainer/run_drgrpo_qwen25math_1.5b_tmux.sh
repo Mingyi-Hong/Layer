@@ -36,16 +36,16 @@ PROJ_DIR=$(cd "$SCRIPT_DIR/../.." && pwd)
 SCRIPT_NAME=$(basename "$0")
 
 # ===== defaults =====
-MODEL_PATH="${MODEL_PATH:-/mnt/data1/zha00175/.cache/huggingface/hub/models--Qwen--Qwen2.5-Math-1.5B/snapshots/4a83ca6e4526a4f2da3aa259ec36c259f66b2ab2}"
+MODEL_PATH="${MODEL_PATH:-Qwen/Qwen2.5-Math-1.5B}"   # HF repo name → auto-download (or pass --model /local/path)
 MODEL_TAG="${MODEL_TAG:-Qwen2.5-Math-1.5B}"
 GPUS="${GPUS:-0,1,2,3}"
 DATA_DIR="${DATA_DIR:-$PROJ_DIR/data/math_drgrpo_official_12k}"  # in-repo dataset
 TRAIN_FILE="${TRAIN_FILE:-$DATA_DIR/train.parquet}"
 TEST_FILE="${TEST_FILE:-$DATA_DIR/test.parquet}"
-CKPT_ROOT="${CKPT_ROOT:-/mnt/data1/zha00175/ckpts_drgrpo}"  # root '/' is 99% full, use big NFS
-CONDA_INIT="${CONDA_INIT:-/mnt/data1/zha00175/miniconda/bin/activate}"
-CONDA_ENV_PATH="${CONDA_ENV_PATH:-/mnt/data1/zha00175/miniconda/envs/verl}"
-PYTHON_BIN="${PYTHON_BIN:-/mnt/data1/zha00175/miniconda/envs/verl/bin/python}"
+CKPT_ROOT="${CKPT_ROOT:-$PROJ_DIR/checkpoints}"   # in deployment dir; override with --ckpt-root
+CONDA_INIT="${CONDA_INIT:-/code/hongpaul-sandbox/cuda/miniconda3/bin/activate}"
+CONDA_ENV_PATH="${CONDA_ENV_PATH:-/code/hongpaul-sandbox/cuda/miniconda3/envs/cuda}"
+PYTHON_BIN="${PYTHON_BIN:-/code/hongpaul-sandbox/cuda/miniconda3/envs/cuda/bin/python}"
 WANDB_API_KEY="${WANDB_API_KEY:-b8f38344ec7231ee89baa74ef7209dd5a43df6b2}"
 WANDB_ENTITY="${WANDB_ENTITY:-mhong-university-of-minnesota}"
 WANDB_PROJECT="${WANDB_PROJECT:-DrGRPO}"
@@ -110,7 +110,9 @@ if [[ ! -f "$TRAIN_FILE" ]] || [[ ! -f "$TEST_FILE" ]]; then
     echo "  build with: python examples/data_preprocess/math_drgrpo.py --local_save_dir $DATA_DIR"
     exit 1
 fi
-if [[ ! -d "$MODEL_PATH" ]]; then
+# MODEL_PATH may be an HF repo name (e.g. "Qwen/Qwen2.5-Math-1.5B") or a local dir.
+# Only warn when it looks like a local path (starts with '/') but doesn't exist.
+if [[ "$MODEL_PATH" == /* ]] && [[ ! -d "$MODEL_PATH" ]]; then
     echo "WARNING: local model path not found ($MODEL_PATH); will rely on HF download by name"
 fi
 mkdir -p "$CKPT_ROOT"
@@ -120,7 +122,7 @@ DATE=$(date +%m%d_%H%M)
 
 export CUDA_VISIBLE_DEVICES=$GPUS
 export WANDB_API_KEY WANDB_ENTITY
-export HF_HOME="${HF_HOME:-/mnt/data1/zha00175/.cache/huggingface}"
+export HF_HOME="${HF_HOME:-/code/hongpaul-sandbox/temp/OPT-RL/hf_cache}"   # shared model cache across nodes
 
 # ===== Dr. GRPO hyperparams (paper Table 6) =====
 LR=1e-6                  # paper: 1e-6 constant

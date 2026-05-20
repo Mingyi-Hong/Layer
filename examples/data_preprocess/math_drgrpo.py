@@ -57,8 +57,11 @@ if __name__ == "__main__":
     parser.add_argument("--local_save_dir", default=None, help="Default: ~/data/math_drgrpo_<mode>")
     parser.add_argument(
         "--official_data_path",
-        default="/tmp/understand-r1-zero/datasets/train/math_12k",
-        help="Path to official math_12k Arrow dataset (mode=official_12k only)",
+        default="./datasets/train/math_12k",
+        help="Path to official math_12k Arrow dataset from "
+        "github.com/sail-sg/understand-r1-zero (mode=official_12k only). "
+        "NOTE: the processed parquet is already shipped in data/math_drgrpo_official_12k/, "
+        "so you normally do NOT need to run this script.",
     )
     parser.add_argument(
         "--lvl3to5_source",
