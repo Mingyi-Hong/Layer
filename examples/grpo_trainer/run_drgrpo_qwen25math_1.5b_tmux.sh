@@ -38,7 +38,7 @@ SCRIPT_NAME=$(basename "$0")
 # ===== defaults =====
 MODEL_PATH="${MODEL_PATH:-Qwen/Qwen2.5-Math-1.5B}"   # HF repo name → auto-download (or pass --model /local/path)
 MODEL_TAG="${MODEL_TAG:-Qwen2.5-Math-1.5B}"
-GPUS="${GPUS:-0,1,2,3}"
+GPUS="${GPUS:-0,1,2,3,4,5,6,7}"   # server has 8 GPUs/node; override with --gpus
 DATA_DIR="${DATA_DIR:-$PROJ_DIR/data/math_drgrpo_official_12k}"  # in-repo dataset
 TRAIN_FILE="${TRAIN_FILE:-$DATA_DIR/train.parquet}"
 TEST_FILE="${TEST_FILE:-$DATA_DIR/test.parquet}"
