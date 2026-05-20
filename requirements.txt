@@ -23,4 +23,5 @@ uvicorn
 fastapi
 latex2sympy2_extended
 math_verify
+sympy  # Dr. GRPO math_drgrpo reward (oat_math_grader); also a torch dep
 tensorboard

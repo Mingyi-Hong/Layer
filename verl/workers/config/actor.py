@@ -191,6 +191,7 @@ class ActorConfig(BaseConfig):
             "seq-mean-token-sum",
             "seq-mean-token-mean",
             "seq-mean-token-sum-norm",
+            "drgrpo",
         ]
         if self.loss_agg_mode not in valid_loss_agg_modes:
             raise ValueError(f"Invalid loss_agg_mode: {self.loss_agg_mode}")
@@ -283,6 +284,11 @@ class FSDPActorConfig(ActorConfig):
     fsdp_config: FSDPEngineConfig = field(default_factory=FSDPEngineConfig)
     use_remove_padding: bool = False
     use_rollout_log_probs: bool = False
+    # Layer-wise RL training: comma-separated trainable layer ids, e.g. "0,14,27".
+    # Also accepts "first"/"middle"/"last" and non-layer tokens "embed"/"norm"/
+    # "lm_head". When set, all other params are frozen before FSDP wrap. None =
+    # train all params (default full RL).
+    train_layer_ids: Optional[str] = None
 
     def __post_init__(self):
         """Validate FSDP actor configuration parameters."""

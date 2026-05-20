@@ -463,6 +463,65 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
                 actor_module = get_peft_model(actor_module, LoraConfig(**lora_config))
 
         self.use_orig_params = fsdp_config.get("use_orig_params", False)
+
+        # ---- Layer-wise RL training (freeze all params except selected layers) ----
+        # Done BEFORE FSDP wrap so each FlatParameter is created with the correct
+        # requires_grad flag. Controlled by actor.train_layer_ids, e.g.
+        #   +actor_rollout_ref.actor.train_layer_ids="14"      (single layer)
+        #   +actor_rollout_ref.actor.train_layer_ids="0,14,27" (multiple)
+        #   +actor_rollout_ref.actor.train_layer_ids="first,middle,last,lm_head"
+        # None (default) = train all params.
+        train_layer_ids_cfg = self.config.actor.get("train_layer_ids", None) if role == "actor" else None
+        if train_layer_ids_cfg is not None and str(train_layer_ids_cfg).strip() not in ("", "full", "None"):
+            if hasattr(actor_module, "model") and hasattr(actor_module.model, "layers"):
+                total_layers = len(actor_module.model.layers)
+            else:
+                total_layers = None
+            if total_layers is None:
+                if self.rank == 0:
+                    print("[layer_freeze] WARNING: could not detect model.layers, skipping freeze")
+            else:
+                trainable_ids = set()
+                extra_prefixes = []  # non-layer components
+                for token in str(train_layer_ids_cfg).split(","):
+                    token = token.strip()
+                    if token == "" or token == "full":
+                        continue
+                    elif token == "first":
+                        trainable_ids.add(0)
+                    elif token == "middle":
+                        trainable_ids.add(total_layers // 2)
+                    elif token == "last":
+                        trainable_ids.add(total_layers - 1)
+                    elif token == "embed":
+                        extra_prefixes.append("model.embed_tokens")
+                    elif token == "norm":
+                        extra_prefixes.append("model.norm")
+                    elif token == "lm_head":
+                        extra_prefixes.append("lm_head")
+                    else:
+                        trainable_ids.add(int(token))
+                trainable_prefixes = tuple(
+                    [f"model.layers.{i}." for i in trainable_ids] + extra_prefixes
+                )
+                frozen_count = trainable_count = 0
+                for name, p in actor_module.named_parameters():
+                    if trainable_prefixes and any(name.startswith(pfx) for pfx in trainable_prefixes):
+                        p.requires_grad_(True)
+                        trainable_count += 1
+                    else:
+                        p.requires_grad_(False)
+                        frozen_count += 1
+                # Mixed requires_grad across the module needs use_orig_params=True
+                # so FSDP does not pack frozen+trainable params into one FlatParameter.
+                self.use_orig_params = True
+                if self.rank == 0:
+                    print(
+                        f"[layer_freeze] total_layers={total_layers}, "
+                        f"trainable_layers={sorted(trainable_ids)}, extra={extra_prefixes}, "
+                        f"frozen_params={frozen_count}, trainable_params={trainable_count}"
+                    )
+
         if self.config.actor.get("freeze_vision_tower", False):
             vision_tower = get_vl_model_vision_tower(actor_module)
             if vision_tower is not None:

@@ -821,6 +821,17 @@ def agg_loss(
         if loss_scale_factor is None:
             loss_scale_factor = loss_mask.shape[-1]
         loss = torch.sum(seq_losses) / loss_scale_factor
+    elif loss_agg_mode == "drgrpo":
+        # Dr. GRPO (https://arxiv.org/abs/2503.20783): replace per-sample
+        # 1/|o_i| length normalization with a fixed 1/MAX_TOKENS denominator,
+        # then average across the global batch. Removes the long-response bias
+        # of standard GRPO's masked_mean.
+        max_tokens = loss_mask.shape[-1]
+        seq_losses = torch.sum(loss_mat * loss_mask, dim=-1) / max_tokens
+        seq_mask = (torch.sum(loss_mask, dim=-1) > 0).float()
+        if global_batch_size is None:
+            global_batch_size = seq_mask.sum()
+        loss = verl_F.masked_sum(seq_losses, seq_mask) / global_batch_size * dp_size
     else:
         raise ValueError(f"Invalid loss_agg_mode: {loss_agg_mode}")
 

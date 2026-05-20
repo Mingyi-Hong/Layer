@@ -129,3 +129,8 @@ logs
 log
 outputs
 .history
+# --- Dr. GRPO: force-include the processed training dataset (overrides *.parquet
+# and dataset/* above) so the repo is one-click launchable after clone ---
+!data/math_drgrpo_official_12k/
+!data/math_drgrpo_official_12k/*.parquet
+!data/math_drgrpo_official_12k/*.json

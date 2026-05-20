@@ -60,6 +60,21 @@ def default_compute_score(
         from . import math_dapo
 
         res = math_dapo.compute_score(solution_str, ground_truth)
+    elif data_source == "math_drgrpo":
+        # Dr. GRPO recipe: binary {0,1} reward using the official Oat-Zero
+        # boxed_reward_fn (mathd normalize + sympy; optional math_verify
+        # fallback). The HF Math-Verify wrapper returned 0 for valid answers
+        # under ray multi-worker pressure (sympy/antlr global state); this
+        # grader is the one used to reproduce the paper's SOTA results.
+        from .oat_math_grader import boxed_reward_fn
+
+        info, score = boxed_reward_fn(solution_str, ground_truth, fast=True)
+        res = {
+            "score": float(score),
+            "acc": float(score),
+            "formatted": float(info.get("formatted", False)),
+            "pred": solution_str[-200:],
+        }
     elif data_source in [
         "numina_aops_forum",
         "numina_synthetic_math",

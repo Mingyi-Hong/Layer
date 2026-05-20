@@ -1,0 +1,24 @@
+{
+  "data_source": "math_drgrpo",
+  "prompt": [
+    {
+      "content": "Please reason step by step, and put your final answer within \\boxed{}.",
+      "role": "system"
+    },
+    {
+      "content": "How many units long is a segment whose endpoints are $(-4,1)$ and $(1,13)$?",
+      "role": "user"
+    }
+  ],
+  "ability": "math",
+  "reward_model": {
+    "ground_truth": "13",
+    "style": "rule"
+  },
+  "extra_info": {
+    "index": 0,
+    "level": "2",
+    "split": "train",
+    "subject": "Algebra"
+  }
+}
