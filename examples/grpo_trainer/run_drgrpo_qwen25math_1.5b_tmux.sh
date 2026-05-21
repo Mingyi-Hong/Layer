@@ -125,7 +125,7 @@ export WANDB_API_KEY WANDB_ENTITY
 export HF_HOME="${HF_HOME:-/code/hongpaul-sandbox/temp/OPT-RL/hf_cache}"   # shared model cache across nodes
 
 # ===== Dr. GRPO hyperparams (paper Table 6) =====
-LR=1e-6                  # paper: 1e-6 constant
+LR=5e-6                  # paper Table 6 uses 1e-6 constant; raised to 5e-6 here
 ROLLOUT_N=8              # paper Table 6: 8 responses per question
 MAX_RESPONSE=3000        # paper: 3000
 MAX_PROMPT=1024          # MATH questions are short (<512 typically)
