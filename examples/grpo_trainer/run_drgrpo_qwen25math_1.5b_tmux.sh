@@ -49,6 +49,7 @@ PYTHON_BIN="${PYTHON_BIN:-/code/hongpaul-sandbox/cuda/miniconda3/envs/cuda/bin/p
 WANDB_API_KEY="${WANDB_API_KEY:-b8f38344ec7231ee89baa74ef7209dd5a43df6b2}"
 WANDB_ENTITY="${WANDB_ENTITY:-mhong-university-of-minnesota}"
 WANDB_PROJECT="${WANDB_PROJECT:-DrGRPO}"
+WANDB_MODE="${WANDB_MODE:-online}"   # set to "offline" for no-network logging, "disabled" to skip wandb entirely
 NO_TMUX=false; EXTRA_ARGS=()
 LAYER="${LAYER:-}"      # single-experiment layer id(s); "" = full RL
 LAYERS="${LAYERS:-}"    # sweep list, e.g. "full 0 6 12" or "full 0..27"
@@ -121,7 +122,7 @@ NGPUS=$(echo "$GPUS" | tr ',' '\n' | wc -l)
 DATE=$(date +%m%d_%H%M)
 
 export CUDA_VISIBLE_DEVICES=$GPUS
-export WANDB_API_KEY WANDB_ENTITY
+export WANDB_API_KEY WANDB_ENTITY WANDB_MODE
 export HF_HOME="${HF_HOME:-/code/hongpaul-sandbox/temp/OPT-RL/hf_cache}"   # shared model cache across nodes
 
 # ===== Dr. GRPO hyperparams (paper Table 6) =====
