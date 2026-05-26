@@ -27,6 +27,12 @@
 #   node4:  ... --layers "full 0..27" --part 4/4
 #   (--layers supports "A..B" ranges, expanded to A A+1 ... B)
 #   Each node runs its stride slice sequentially; same --layers everywhere.
+#
+# RESUME / continue training from a previous run (same settings, extend epochs):
+#   EPOCHS=5 bash run_drgrpo_qwen25math_1.5b_tmux.sh --layers "0..27" --part 1/4 --resume
+#   -> For each setting, finds the latest existing matching ckpt dir (any DATE)
+#      under $CKPT_ROOT/$WANDB_PROJECT/ and reuses it. verl resume_mode=auto then
+#      picks up the latest global_step_* and trains to the new EPOCHS total.
 # ==============================================================================
 
 set -uo pipefail
@@ -54,6 +60,7 @@ NO_TMUX=false; EXTRA_ARGS=()
 LAYER="${LAYER:-}"      # single-experiment layer id(s); "" = full RL
 LAYERS="${LAYERS:-}"    # sweep list, e.g. "full 0 6 12" or "full 0..27"
 PART_K=1; PART_N=1      # --part K/N stride slicing for multi-node
+RESUME=false            # --resume: reuse existing matching ckpt dir + verl auto-resume from latest step
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -65,6 +72,7 @@ while [[ $# -gt 0 ]]; do
         --layer)      LAYER="$2"; shift 2 ;;     # single experiment, this layer
         --layers)     LAYERS="$2"; shift 2 ;;    # sweep of settings (space-separated)
         --part)       IFS='/' read -r PART_K PART_N <<< "$2"; shift 2 ;;
+        --resume)     RESUME=true; shift ;;        # reuse latest matching ckpt dir, verl auto-resumes from last step
         --no-tmux)    NO_TMUX=true; shift ;;
         *)            EXTRA_ARGS+=("$1"); shift ;;
     esac
@@ -98,6 +106,7 @@ if [[ -z "${TMUX:-}" ]] && [[ "$NO_TMUX" == "false" ]]; then
     [[ -n "$LAYER"  ]] && FULL_ARGS="$FULL_ARGS --layer $(printf '%q' "$LAYER")"
     [[ -n "$LAYERS" ]] && FULL_ARGS="$FULL_ARGS --layers $(printf '%q' "$LAYERS")"
     (( PART_N > 1 )) && FULL_ARGS="$FULL_ARGS --part ${PART_K}/${PART_N}"
+    [[ "$RESUME" == "true" ]] && FULL_ARGS="$FULL_ARGS --resume"
     for arg in "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"; do FULL_ARGS="$FULL_ARGS $(printf '%q' "$arg")"; done
     tmux new-session -d -s "$TMUX_SESSION" \
         "source $CONDA_INIT && conda activate $CONDA_ENV_PATH && cd $PROJ_DIR && bash $SCRIPT_DIR/$SCRIPT_NAME $FULL_ARGS; exec bash"
@@ -154,6 +163,21 @@ run_one() {
     fi
 
     local EXP_NAME="${DATE}_DrGRPO_${MODEL_TAG}_${LAYER_NAME}_n${ROLLOUT_N}_r${MAX_RESPONSE}_lr${LR}"
+
+    # --resume: find an existing matching experiment dir (any DATE) and reuse it,
+    # so verl trainer.resume_mode=auto picks up the latest global_step_* checkpoint.
+    if [[ "$RESUME" == "true" ]]; then
+        local suffix="_DrGRPO_${MODEL_TAG}_${LAYER_NAME}_n${ROLLOUT_N}_r${MAX_RESPONSE}_lr${LR}"
+        local found
+        found=$(ls -dt "${CKPT_ROOT}/${WANDB_PROJECT}/"*"${suffix}" 2>/dev/null | head -1)
+        if [[ -n "$found" ]]; then
+            EXP_NAME=$(basename "$found")
+            echo "[resume] reusing existing exp: $EXP_NAME"
+        else
+            echo "[resume] no prior exp matching *${suffix}; starting fresh as $EXP_NAME"
+        fi
+    fi
+
     local CKPTS_DIR="${CKPT_ROOT}/${WANDB_PROJECT}/${EXP_NAME}"
     mkdir -p "$CKPTS_DIR"
     local LOG_FILE="$CKPTS_DIR/train.log"
