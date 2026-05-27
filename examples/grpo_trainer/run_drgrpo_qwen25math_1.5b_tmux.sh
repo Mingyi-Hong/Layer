@@ -110,8 +110,11 @@ if [[ -z "${TMUX:-}" ]] && [[ "$NO_TMUX" == "false" ]]; then
     (( PART_N > 1 )) && FULL_ARGS="$FULL_ARGS --part ${PART_K}/${PART_N}"
     [[ "$RESUME" == "true" ]] && FULL_ARGS="$FULL_ARGS --resume"
     for arg in "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}"; do FULL_ARGS="$FULL_ARGS $(printf '%q' "$arg")"; done
+    # Forward overridable env vars (LR, EPOCHS) into the inner tmux shell so
+    # `LR=1e-6 bash run...sh` works (tmux doesn't inherit outer env by default).
+    ENV_INJECT="LR=${LR:-} EPOCHS=${EPOCHS:-}"
     tmux new-session -d -s "$TMUX_SESSION" \
-        "source $CONDA_INIT && conda activate $CONDA_ENV_PATH && cd $PROJ_DIR && bash $SCRIPT_DIR/$SCRIPT_NAME $FULL_ARGS; exec bash"
+        "source $CONDA_INIT && conda activate $CONDA_ENV_PATH && cd $PROJ_DIR && $ENV_INJECT bash $SCRIPT_DIR/$SCRIPT_NAME $FULL_ARGS; exec bash"
     echo "Tmux '$TMUX_SESSION' started.  Attach: tmux attach -t $TMUX_SESSION"
     exit 0
 fi
@@ -137,7 +140,7 @@ export WANDB_API_KEY WANDB_ENTITY WANDB_MODE
 export HF_HOME="${HF_HOME:-/code/hongpaul-sandbox/temp/OPT-RL/hf_cache}"   # shared model cache across nodes
 
 # ===== Dr. GRPO hyperparams (paper Table 6) =====
-LR=5e-6                  # paper Table 6 uses 1e-6 constant; raised to 5e-6 here
+LR="${LR:-5e-6}"         # paper Table 6 uses 1e-6 constant; default 5e-6, override with LR=...
 ROLLOUT_N=8              # paper Table 6: 8 responses per question
 MAX_RESPONSE=3000        # paper: 3000
 MAX_PROMPT=1024          # MATH questions are short (<512 typically)
