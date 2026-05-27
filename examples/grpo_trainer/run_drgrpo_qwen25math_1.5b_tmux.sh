@@ -101,7 +101,9 @@ if [[ -z "${TMUX:-}" ]] && [[ "$NO_TMUX" == "false" ]]; then
     TAG=""
     [[ -n "$LAYERS" ]] && TAG="_sweep"
     [[ -z "$LAYERS" && -n "$LAYER" ]] && TAG="_L$(echo "$LAYER" | tr ',' '-')"
-    TMUX_SESSION="drgrpo_$(basename $MODEL_TAG)${TAG}${PART_TAG}_$(date +%m%d_%H%M)"
+    # tmux silently converts '.' to '_' in session names, so we pre-sanitize
+    # so the echoed name matches what `tmux attach -t <name>` will accept.
+    TMUX_SESSION="drgrpo_$(basename $MODEL_TAG | tr '.' '_')${TAG}${PART_TAG}_$(date +%m%d_%H%M)"
     FULL_ARGS="--no-tmux --gpus $(printf '%q' "$GPUS") --model $(printf '%q' "$MODEL_PATH") --model-tag $(printf '%q' "$MODEL_TAG") --ckpt-root $(printf '%q' "$CKPT_ROOT") --data-dir $(printf '%q' "$DATA_DIR")"
     [[ -n "$LAYER"  ]] && FULL_ARGS="$FULL_ARGS --layer $(printf '%q' "$LAYER")"
     [[ -n "$LAYERS" ]] && FULL_ARGS="$FULL_ARGS --layers $(printf '%q' "$LAYERS")"
@@ -144,7 +146,7 @@ PPO_INNER_EPOCH=1        # paper: inner proximal update epoch = 1
 BATCH_SIZE=128           # data.train_batch_size (prompts) - paper/official
 MINI_BATCH=128           # = BATCH_SIZE (single update per step, inner_epoch=1)
 MICRO_BATCH=8            # sequences per GPU per backward pass
-EPOCHS="${EPOCHS:-2}"    # paper official num_prompt_epoch=20; 2 = quick run
+EPOCHS="${EPOCHS:-5}"    # paper official num_prompt_epoch=20; 5 = full run (~465 steps)
 
 STEPS_PER_EPOCH=$($PYTHON_BIN -c "import pandas as pd; print(max(1, len(pd.read_parquet('$TRAIN_FILE')) // $BATCH_SIZE))")
 TOTAL_STEPS=$((STEPS_PER_EPOCH * EPOCHS))
