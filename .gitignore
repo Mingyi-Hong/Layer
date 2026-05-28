@@ -134,3 +134,6 @@ outputs
 !data/math_drgrpo_official_12k/
 !data/math_drgrpo_official_12k/*.parquet
 !data/math_drgrpo_official_12k/*.json
+!data/math_drgrpo_lvl3to5/
+!data/math_drgrpo_lvl3to5/*.parquet
+!data/math_drgrpo_lvl3to5/*.json
