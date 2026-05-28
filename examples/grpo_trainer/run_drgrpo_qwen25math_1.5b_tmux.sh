@@ -153,7 +153,7 @@ EPOCHS="${EPOCHS:-5}"    # paper official num_prompt_epoch=20; 5 = full run (~46
 
 STEPS_PER_EPOCH=$($PYTHON_BIN -c "import pandas as pd; print(max(1, len(pd.read_parquet('$TRAIN_FILE')) // $BATCH_SIZE))")
 TOTAL_STEPS=$((STEPS_PER_EPOCH * EPOCHS))
-SAVE_FREQ=$(( (TOTAL_STEPS + 1) / 2 ))
+SAVE_FREQ=$STEPS_PER_EPOCH   # save once per epoch (= 93 for 12k @ batch 128)
 
 # -----------------------------------------------------------------------------
 # run_one  <setting>   where <setting> is "full" or layer id(s) like "14" / "0,14,27"
